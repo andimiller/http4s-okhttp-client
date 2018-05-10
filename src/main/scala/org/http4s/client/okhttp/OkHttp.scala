@@ -31,8 +31,10 @@ import scala.concurrent.ExecutionContext
 
 object OkHttp {
 
-  def apply[F[_]]()(implicit F: Effect[F], ec: ExecutionContext): Client[F] = {
-    val client = new OkHttpClient()
+  val defaultconfig = new OkHttpClient.Builder()
+
+  def apply[F[_]](config: OkHttpClient.Builder = defaultconfig)(implicit F: Effect[F], ec: ExecutionContext): Client[F] = {
+    val client = config.build()
     Client(
       Kleisli { req =>
         F.async[DisposableResponse[F]] { cb =>
@@ -50,11 +52,11 @@ object OkHttp {
     )
   }
 
-  def stream[F[_]]()(implicit F: Effect[F],
+  def stream[F[_]](config: OkHttpClient.Builder = defaultconfig)(implicit F: Effect[F],
                      ec: ExecutionContext): Stream[F, Client[F]] =
     Stream.bracket(F.delay(apply()))(c => Stream.emit(c), _.shutdown)
 
-  def handler[F[_]](cb: Either[Throwable, DisposableResponse[F]] => Unit)(
+  private def handler[F[_]](cb: Either[Throwable, DisposableResponse[F]] => Unit)(
       implicit F: Effect[F],
       ec: ExecutionContext) = {
 
@@ -80,13 +82,13 @@ object OkHttp {
     }
   }
 
-  def getHeaders(response: OKResponse): Headers = {
+  private def getHeaders(response: OKResponse): Headers = {
     Headers(response.headers().names().asScala.toList.flatMap { v =>
       response.headers().values(v).asScala.map(Header(v, _))
     })
   }
 
-  def toOkHttpRequest[F[_]](req: Request[F])(
+  private def toOkHttpRequest[F[_]](req: Request[F])(
       implicit F: Effect[F]): OKRequest = {
     val body = req match {
       case _ if req.isChunked || req.contentLength.isDefined =>

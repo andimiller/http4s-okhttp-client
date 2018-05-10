@@ -15,7 +15,7 @@ object ManualTest extends StreamApp[IO] {
       args: List[String],
       requestShutdown: IO[Unit]): fs2.Stream[IO, StreamApp.ExitCode] = {
     for {
-      c <- OkHttp.stream[IO]
+      c <- OkHttp.stream[IO]()
       result <- Stream.eval(
         c.fetch(
           Request[IO](Method.GET,
