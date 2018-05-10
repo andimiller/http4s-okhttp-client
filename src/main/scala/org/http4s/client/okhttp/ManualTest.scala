@@ -19,8 +19,8 @@ object ManualTest extends StreamApp[IO] {
       result <- Stream.eval(
         c.fetch(
           Request[IO](Method.GET,
-                      Uri.unsafeFromString("http://httpbin.org/get")))(IO.pure))
-      _ = println(result.status)
+                      Uri.unsafeFromString("https://http2.golang.org/reqinfo")))(IO.pure))
+      _ = println(result.status, result.httpVersion)
       body <- Stream.eval(result.as[String])
       _ = println(body)
       _ <- Stream.eval(c.shutdown)
