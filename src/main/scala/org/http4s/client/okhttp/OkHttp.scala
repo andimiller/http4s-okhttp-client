@@ -24,7 +24,6 @@ import org.http4s.client.{Client, DisposableResponse}
 import fs2.Stream._
 import fs2._
 import fs2.io._
-import fs2.interop.reactivestreams.{StreamSubscriber, StreamUnicastPublisher}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
@@ -72,7 +71,7 @@ object OkHttp {
             .withType(MediaType.fromKey(response.body.contentType().`type`(),
                                         response.body.contentType().subtype()))
             .withBodyStream(
-              fs2.io.readInputStream(F.delay(response.body.byteStream()),
+              readInputStream(F.delay(response.body.byteStream()),
                                      1024,
                                      true)),
           F.delay()
