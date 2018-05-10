@@ -21,6 +21,7 @@ object ManualTest extends StreamApp[IO] {
           Request[IO](Method.GET,
                       Uri.unsafeFromString("https://http2.golang.org/reqinfo")))(IO.pure))
       _ = println(result.status, result.httpVersion)
+      _ = println(result.headers)
       body <- Stream.eval(result.as[String])
       _ = println(body)
       _ <- Stream.eval(c.shutdown)

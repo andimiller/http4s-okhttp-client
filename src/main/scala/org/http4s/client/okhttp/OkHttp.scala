@@ -8,9 +8,27 @@ import cats.data._
 import cats.syntax._
 import cats.effect._
 import cats.effect.implicits._
-import okhttp3.{Call, Callback, OkHttpClient, Protocol, RequestBody, Headers => OKHeaders, MediaType => OKMediaType, Request => OKRequest, Response => OKResponse}
+import okhttp3.{
+  Call,
+  Callback,
+  OkHttpClient,
+  Protocol,
+  RequestBody,
+  Headers => OKHeaders,
+  MediaType => OKMediaType,
+  Request => OKRequest,
+  Response => OKResponse
+}
 import okio.BufferedSink
-import org.http4s.{Header, Headers, HttpVersion, MediaType, Request, Response, Status}
+import org.http4s.{
+  Header,
+  Headers,
+  HttpVersion,
+  MediaType,
+  Request,
+  Response,
+  Status
+}
 import org.http4s.client.{Client, DisposableResponse}
 import fs2.Stream._
 import fs2._
@@ -22,12 +40,15 @@ import scala.concurrent.ExecutionContext
 object OkHttp {
 
   val defaultconfig = new OkHttpClient.Builder()
-    .protocols(List(
-      Protocol.HTTP_2,
-      Protocol.HTTP_1_1
-    ).asJava)
+    .protocols(
+      List(
+        Protocol.HTTP_2,
+        Protocol.HTTP_1_1
+      ).asJava)
 
-  def apply[F[_]](config: OkHttpClient.Builder = defaultconfig)(implicit F: Effect[F], ec: ExecutionContext): Client[F] = {
+  def apply[F[_]](config: OkHttpClient.Builder = defaultconfig)(
+      implicit F: Effect[F],
+      ec: ExecutionContext): Client[F] = {
     val client = config.build()
     Client(
       Kleisli { req =>
@@ -46,11 +67,13 @@ object OkHttp {
     )
   }
 
-  def stream[F[_]](config: OkHttpClient.Builder = defaultconfig)(implicit F: Effect[F],
-                     ec: ExecutionContext): Stream[F, Client[F]] =
+  def stream[F[_]](config: OkHttpClient.Builder = defaultconfig)(
+      implicit F: Effect[F],
+      ec: ExecutionContext): Stream[F, Client[F]] =
     Stream.bracket(F.delay(apply()))(c => Stream.emit(c), _.shutdown)
 
-  private def handler[F[_]](cb: Either[Throwable, DisposableResponse[F]] => Unit)(
+  private def handler[F[_]](
+      cb: Either[Throwable, DisposableResponse[F]] => Unit)(
       implicit F: Effect[F],
       ec: ExecutionContext) = {
 
@@ -61,21 +84,19 @@ object OkHttp {
 
       override def onResponse(call: Call, response: OKResponse): Unit = {
         val protocol = response.protocol() match {
-          case Protocol.HTTP_2 => HttpVersion.`HTTP/2.0`
+          case Protocol.HTTP_2   => HttpVersion.`HTTP/2.0`
           case Protocol.HTTP_1_1 => HttpVersion.`HTTP/1.1`
           case Protocol.HTTP_1_0 => HttpVersion.`HTTP/1.0`
-          case _ => HttpVersion.`HTTP/1.1`
+          case _                 => HttpVersion.`HTTP/1.1`
         }
         val bodyStream = response.body.byteStream()
         val dr = new DisposableResponse[F](
           Response[F](headers = getHeaders(response), httpVersion = protocol)
-            .withStatus(Status.apply(response.code()))
-            .withType(MediaType.fromKey(response.body.contentType().`type`(),
-                                        response.body.contentType().subtype()))
-            .withBodyStream(
-              readInputStream(F.pure(bodyStream),
-                                     1024,
-                                     true)),
+            .withStatus(
+              Status
+                .fromInt(response.code())
+                .getOrElse(Status.apply(response.code())))
+            .withBodyStream(readInputStream(F.pure(bodyStream), 1024, true)),
           F.delay() //bodyStream.close())
         )
         ec.execute(new Runnable { def run(): Unit = cb(Right(dr)) })
